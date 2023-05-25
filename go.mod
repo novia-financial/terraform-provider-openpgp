@@ -1,4 +1,4 @@
-module github.com/ekristen/terraform-provider-pgp
+module github.com/grixxie/terraform-provider-pgp
 
 go 1.16
 
