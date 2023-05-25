@@ -40,7 +40,7 @@ func TestCreateEntity_CreateEntityWithNoExpiryAndNoPassphrase_KeyExpiredReturnsF
 	assert.Equal(t, isExpired, false)
 }
 
-func TestCreateEntity_CreateExpiredEntityWithNoPassphrase_KeyExpiredReturnsFalse(t *testing.T) {
+func TestCreateEntity_CreateExpiredEntityWithNoPassphrase_KeyExpiredReturnsTrue(t *testing.T) {
 	t.Parallel()
 
 	const NAME string = "nameeee"
@@ -95,7 +95,7 @@ func TestCreateEntity_CreateValidEntityWithPassphrase_KeyExpiredReturnsFalse(t *
 	const NAME string = "nameeee"
 	const COMMENT string = "commentttt"
 	const EMAIL string = "emaillll"
-	const EXPIRY int = 0
+	const EXPIRY int = 1
 	const PASSPHRASE string = "password123"
 	values := map[string]interface{}{
 		"name":       NAME,

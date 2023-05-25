@@ -37,6 +37,7 @@ func createEntity(d *schema.ResourceData) (*openpgp.Entity, *[]byte, error) {
 		}
 	}
 
+	// ?
 	if passphrase == "" {
 		return e, nil, nil
 	}
@@ -74,12 +75,12 @@ func createPrivateKey(e *openpgp.Entity, passphrase *[]byte) (string, string, er
 		return "", "", fmt.Errorf("error armor pgp keys: %v", err)
 	}
 
-	var pt io.WriteCloser = nil
+	var wc io.WriteCloser = nil
 	if passphrase != nil {
-		pt, _ = openpgp.SymmetricallyEncrypt(w, *passphrase, nil, nil)
+		wc, _ = openpgp.SymmetricallyEncrypt(w, *passphrase, nil, nil)
 	}
 
-	_, err = pt.Write(buf.Bytes())
+	_, err = wc.Write(buf.Bytes())
 	e.SerializePrivate(w, nil)
 	e.SerializePrivate(b64w, nil)
 
@@ -87,8 +88,8 @@ func createPrivateKey(e *openpgp.Entity, passphrase *[]byte) (string, string, er
 		return "", "", fmt.Errorf("hmm: %v", err)
 	}
 
-	if pt != nil {
-		pt.Close()
+	if wc != nil {
+		wc.Close()
 	}
 	w.Close()
 	b64w.Flush()
