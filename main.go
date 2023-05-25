@@ -4,7 +4,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/plugin"
 
-	"github.com/ekristen/terraform-provider-pgp/pgp"
+	"github.com/grixxie/terraform-provider-pgp/pgp"
 )
 
 func main() {
