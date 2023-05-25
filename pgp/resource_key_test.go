@@ -1,17 +1,13 @@
 package pgp
 
 import (
-	"bytes"
-	"errors"
 	"fmt"
-	"io/ioutil"
 	"testing"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/crypto/openpgp"
-	"golang.org/x/crypto/openpgp/armor"
 )
 
 func buildIdentityName(name string, comment string, email string) string {
@@ -162,58 +158,5 @@ func TestResourceKeyCreate_CreateValidEntityWithPassphrase_DecryptWithIncorrectP
 	assert.NotEqual(t, entity, (*openpgp.Entity)(nil))
 	assert.Equal(t, err, (error)(nil))
 
-	private := resourceData.Get("private_key").(string)
-	fmt.Printf("private: \n %s", private)
-
-	// entity.PrivateKey.Decrypt([]byte("wrongpassword456"))
-}
-
-func TestCreatePrivateKey_(t *testing.T) {
-	t.Parallel()
-
-	const NAME string = "nameeee"
-	const COMMENT string = "commentttt"
-	const EMAIL string = "emaillll"
-	const EXPIRY int = 0
-	const PASSPHRASE string = "password123"
-	values := map[string]interface{}{
-		"name":       NAME,
-		"comment":    COMMENT,
-		"email":      EMAIL,
-		"expiry":     EXPIRY,
-		"passphrase": PASSPHRASE,
-	}
-	var resourceData *schema.ResourceData = schema.TestResourceDataRaw(t, getSchemaResource().Schema, values)
-
-	entity, _, _ := createEntity(resourceData)
-
-	passphraseBytes := []byte(PASSPHRASE)
-	_, armoredPrivateKey, _ := createPrivateKey(entity, &passphraseBytes)
-	decrypted, _ := decrypttt([]byte(armoredPrivateKey), passphraseBytes)
-	fmt.Println("\n\nDecrypted:", string(decrypted))
-}
-func decrypttt(ciphertext []byte, password []byte) (plaintext []byte, err error) {
-	decbuf := bytes.NewBuffer(ciphertext)
-	armorBlock, _ := armor.Decode(decbuf)
-
-	failed := false
-	prompt := func(keys []openpgp.Key, symmetric bool) ([]byte, error) {
-		if failed {
-			return nil, errors.New("decryption failed")
-		}
-		failed = true
-		return password, nil
-	}
-
-	md, err := openpgp.ReadMessage(armorBlock.Body, nil, prompt, nil)
-	if err != nil {
-		return
-	}
-
-	plaintext, err = ioutil.ReadAll(md.UnverifiedBody)
-	if err != nil {
-		return
-	}
-
-	return
+	entity.PrivateKey.Decrypt([]byte("wrongpassword456"))
 }

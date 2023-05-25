@@ -68,7 +68,7 @@ func createPrivateKey(e *openpgp.Entity, passphrase *[]byte) (string, string, er
 	b64buf := new(bytes.Buffer)
 	b64w := bufio.NewWriter(b64buf)
 
-	buf := bytes.NewBuffer(nil)
+	buf := new(bytes.Buffer)
 	w, err := armor.Encode(buf, openpgp.PrivateKeyType, nil)
 	if err != nil {
 		return "", "", fmt.Errorf("error armor pgp keys: %v", err)
@@ -79,13 +79,8 @@ func createPrivateKey(e *openpgp.Entity, passphrase *[]byte) (string, string, er
 		pt, _ = openpgp.SymmetricallyEncrypt(w, *passphrase, nil, nil)
 	}
 
-	_, err = pt.Write(buf.Bytes())
 	e.SerializePrivate(w, nil)
 	e.SerializePrivate(b64w, nil)
-
-	if err != nil {
-		return "", "", fmt.Errorf("hmm: %v", err)
-	}
 
 	if pt != nil {
 		pt.Close()
