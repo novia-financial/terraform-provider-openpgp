@@ -2,6 +2,7 @@ package pgp
 
 import (
 	"fmt"
+	"math/rand"
 	"testing"
 	"time"
 
@@ -63,16 +64,17 @@ func TestCreateEntity_CreateExpiredEntity_KeyExpiredReturnsTrue(t *testing.T) {
 
 func TestCreateEntity_CreateValidEntity_KeyExpiredReturnsFalse(t *testing.T) {
 	t.Parallel()
+	rand.Seed(time.Now().UnixNano()) // need to seed the PRNG before using rand
 
 	const NAME string = "nameeee"
 	const COMMENT string = "commentttt"
 	const EMAIL string = "emaillll"
-	const EXPIRY int = 1
+	var expiry int = rand.Intn(ExpiryInDaysMaximum-ExpiryInDaysMinimum) + ExpiryInDaysMinimum // get a random uint between 1000 and 1
 	values := map[string]interface{}{
 		"name":    NAME,
 		"comment": COMMENT,
 		"email":   EMAIL,
-		"expiry":  EXPIRY,
+		"expiry":  expiry,
 	}
 	var resourceData *schema.ResourceData = schema.TestResourceDataRaw(t, getSchemaResource().Schema, values)
 

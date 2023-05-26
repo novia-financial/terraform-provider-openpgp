@@ -15,7 +15,7 @@ func getSchemaResource() *schema.Resource {
 				Type:         schema.TypeString,
 				Required:     true,
 				ForceNew:     true,
-				ValidateFunc: validation.StringLenBetween(0, 256),
+				ValidateFunc: validation.StringLenBetween(NameLengthMinimum, NameLengthMaximum),
 			},
 			"comment": {
 				Type:     schema.TypeString,
@@ -28,10 +28,11 @@ func getSchemaResource() *schema.Resource {
 				Required: true,
 			},
 			"expiry": {
-				Type:     schema.TypeInt,
-				ForceNew: true,
-				Required: false,
-				Default:  0,
+				Type:         schema.TypeInt,
+				ForceNew:     true,
+				Required:     false,
+				Default:      0,
+				ValidateFunc: validation.IntBetween(ExpiryInDaysMinimum, ExpiryInDaysMaximum),
 			},
 
 			"public_key": {
