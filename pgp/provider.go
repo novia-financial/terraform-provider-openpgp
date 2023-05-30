@@ -8,7 +8,7 @@ import (
 func Provider() *schema.Provider {
 	return &schema.Provider{
 		ResourcesMap: map[string]*schema.Resource{
-			"pgp_key": resourceKey(),
+			"pgp_key": getSchemaResource(),
 		},
 		DataSourcesMap: map[string]*schema.Resource{
 			"pgp_encrypt": dataSourceEncrypt(),

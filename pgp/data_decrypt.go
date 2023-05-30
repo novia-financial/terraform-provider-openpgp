@@ -13,7 +13,6 @@ import (
 	"golang.org/x/crypto/openpgp/armor"
 	"golang.org/x/crypto/openpgp/packet"
 
-	"github.com/hashicorp/errwrap"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
@@ -66,7 +65,7 @@ func dataSourceDecryptRead(d *schema.ResourceData, meta interface{}) error {
 	if encoding == "base64" {
 		c, err := base64.StdEncoding.DecodeString(string(ciphertext))
 		if err != nil {
-			return errwrap.Wrapf("unable to decode: {{err}}", err)
+			return fmt.Errorf("unable to decode: %v", err)
 		}
 		ciphertext = c
 	}
