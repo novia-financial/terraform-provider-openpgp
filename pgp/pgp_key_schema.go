@@ -30,7 +30,7 @@ func getSchemaResource() *schema.Resource {
 			"expiry": {
 				Type:         schema.TypeInt,
 				ForceNew:     true,
-				Required:     false,
+				Optional:     true,
 				Default:      0,
 				ValidateFunc: validation.IntBetween(ExpiryInDaysMinimum, ExpiryInDaysMaximum),
 			},
