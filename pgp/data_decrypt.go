@@ -108,12 +108,7 @@ func decrypt(entity *openpgp.Entity, encrypted []byte, encoding string, passphra
 	var messageReader *openpgp.MessageDetails
 	var err error
 
-	failed := false
 	prompt := func(keys []openpgp.Key, symmetric bool) ([]byte, error) {
-		if failed {
-			return nil, errors.New("decryption failed")
-		}
-		failed = true
 		return passphrase, nil
 	}
 

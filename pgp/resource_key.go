@@ -78,10 +78,12 @@ func createPrivateKey(e *openpgp.Entity, passphrase *[]byte) (string, string, er
 	var wc io.WriteCloser = nil
 	if passphrase != nil {
 		wc, _ = openpgp.SymmetricallyEncrypt(w, *passphrase, &openpgp.FileHints{}, nil)
+		_, err = wc.Write(buf.Bytes())
+		e.SerializePrivate(wc, nil)
+	} else {
+		e.SerializePrivate(w, nil)
 	}
 
-	_, err = wc.Write(buf.Bytes())
-	e.SerializePrivate(w, nil)
 	e.SerializePrivate(b64w, nil)
 
 	if err != nil {
