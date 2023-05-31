@@ -28,7 +28,7 @@ func TestCreateEntity_CreateEntityWithNoExpiry_KeyExpiredReturnsFalse(t *testing
 	}
 	var resourceData *schema.ResourceData = schema.TestResourceDataRaw(t, getSchemaResource().Schema, values)
 
-	entity, err := createEntity(resourceData)
+	entity, _, err := createEntity(resourceData)
 	assert.NotEqual(t, entity, (*openpgp.Entity)(nil))
 	assert.Equal(t, err, (error)(nil))
 
@@ -52,7 +52,7 @@ func TestCreateEntity_CreateExpiredEntity_KeyExpiredReturnsTrue(t *testing.T) {
 	}
 	var resourceData *schema.ResourceData = schema.TestResourceDataRaw(t, getSchemaResource().Schema, values)
 
-	entity, err := createEntity(resourceData)
+	entity, _, err := createEntity(resourceData)
 	assert.NotEqual(t, entity, (*openpgp.Entity)(nil))
 	assert.Equal(t, err, (error)(nil))
 
@@ -78,7 +78,7 @@ func TestCreateEntity_CreateValidEntity_KeyExpiredReturnsFalse(t *testing.T) {
 	}
 	var resourceData *schema.ResourceData = schema.TestResourceDataRaw(t, getSchemaResource().Schema, values)
 
-	entity, err := createEntity(resourceData)
+	entity, _, err := createEntity(resourceData)
 	assert.NotEqual(t, entity, (*openpgp.Entity)(nil))
 	assert.Equal(t, err, (error)(nil))
 
