@@ -19,7 +19,6 @@ import (
 func dataSourceDecrypt() *schema.Resource {
 	return &schema.Resource{
 		Read: dataSourceDecryptRead,
-
 		Schema: map[string]*schema.Schema{
 			"plaintext": {
 				Type:     schema.TypeString,
@@ -37,7 +36,7 @@ func dataSourceDecrypt() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 				Default:  "armored",
-				ValidateFunc: func(val interface{}, key string) (warns []string, errs []error) {
+				ValidateFunc: func(val interface{}, key string) (_ []string, errs []error) {
 					v := val.(string)
 
 					if v != "armored" && v != "base64" {
@@ -61,6 +60,7 @@ func dataSourceDecryptRead(d *schema.ResourceData, meta interface{}) error {
 
 	encoding := d.Get("ciphertext_encoding").(string)
 	ciphertext := []byte(d.Get("ciphertext").(string))
+	passphrase := []byte(d.Get("passphrase").(string))
 
 	if encoding == "base64" {
 		c, err := base64.StdEncoding.DecodeString(string(ciphertext))
@@ -70,7 +70,7 @@ func dataSourceDecryptRead(d *schema.ResourceData, meta interface{}) error {
 		ciphertext = c
 	}
 
-	plaintext, err := decrypt(privateKeyPacket, ciphertext, encoding)
+	plaintext, err := decrypt(privateKeyPacket, ciphertext, encoding, passphrase)
 	if err != nil {
 		return err
 	}
@@ -94,44 +94,53 @@ func getPrivateKeyPacket(privateKey []byte) (*openpgp.Entity, error) {
 	}
 
 	if block.Type != openpgp.PrivateKeyType {
-		return nil, errors.New("Invalid private key data")
+		return nil, errors.New("invalid private key data")
 	}
 
 	packetReader := packet.NewReader(block.Body)
 	return openpgp.ReadEntity(packetReader)
 }
 
-func decrypt(entity *openpgp.Entity, encrypted []byte, encoding string) ([]byte, error) {
+func decrypt(entity *openpgp.Entity, encrypted []byte, encoding string, passphrase []byte) ([]byte, error) {
 	// Decrypt message
 	entityList := openpgp.EntityList{entity}
 
 	var messageReader *openpgp.MessageDetails
 	var err error
 
+	failed := false
+	prompt := func(keys []openpgp.Key, symmetric bool) ([]byte, error) {
+		if failed {
+			return nil, errors.New("decryption failed")
+		}
+		failed = true
+		return passphrase, nil
+	}
+
 	if encoding == "armored" {
 		// Decode message
 		block, err := armor.Decode(bytes.NewReader(encrypted))
 		if err != nil {
-			return []byte{}, fmt.Errorf("Error decoding: %v", err)
+			return []byte{}, fmt.Errorf("error decoding: %v", err)
 		}
 		if block.Type != "Message" {
-			return []byte{}, errors.New("Invalid message type")
+			return []byte{}, errors.New("invalid message type")
 		}
 
-		messageReader, err = openpgp.ReadMessage(block.Body, entityList, nil, nil)
+		messageReader, err = openpgp.ReadMessage(block.Body, entityList, prompt, nil)
 		if err != nil {
-			return []byte{}, fmt.Errorf("Error reading message: %v", err)
+			return []byte{}, fmt.Errorf("error reading message: %v", err)
 		}
 	} else {
-		messageReader, err = openpgp.ReadMessage(bytes.NewReader(encrypted), entityList, nil, nil)
+		messageReader, err = openpgp.ReadMessage(bytes.NewReader(encrypted), entityList, prompt, nil)
 		if err != nil {
-			return []byte{}, fmt.Errorf("Error reading message: %v", err)
+			return []byte{}, fmt.Errorf("error reading message: %v", err)
 		}
 	}
 
 	read, err := ioutil.ReadAll(messageReader.UnverifiedBody)
 	if err != nil {
-		return []byte{}, fmt.Errorf("Error reading unverified body: %v", err)
+		return []byte{}, fmt.Errorf("error reading unverified body: %v", err)
 	}
 
 	if encoding == "armored" {
@@ -139,7 +148,7 @@ func decrypt(entity *openpgp.Entity, encrypted []byte, encoding string) ([]byte,
 		reader := bytes.NewReader(read)
 		uncompressed, err := gzip.NewReader(reader)
 		if err != nil {
-			return []byte{}, fmt.Errorf("Error initializing gzip reader: %v", err)
+			return []byte{}, fmt.Errorf("error initializing gzip reader: %v", err)
 		}
 		defer uncompressed.Close()
 
