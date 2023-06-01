@@ -5,10 +5,10 @@ import (
 	"bytes"
 	"encoding/base64"
 	"fmt"
-	"io"
 
 	"golang.org/x/crypto/openpgp"
 	"golang.org/x/crypto/openpgp/armor"
+	"golang.org/x/crypto/openpgp/packet"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
@@ -65,35 +65,36 @@ func createPublicKey(e *openpgp.Entity) (string, string, error) {
 	return base64.StdEncoding.EncodeToString(b64buf.Bytes()), buf.String(), nil
 }
 
+// returns a base64-private and an armored-private
 func createPrivateKey(e *openpgp.Entity, passphrase *[]byte) (string, string, error) {
 	b64buf := new(bytes.Buffer)
 	b64w := bufio.NewWriter(b64buf)
 
-	buf := bytes.NewBuffer(nil)
+	buf := new(bytes.Buffer)
 	w, err := armor.Encode(buf, openpgp.PrivateKeyType, nil)
 	if err != nil {
 		return "", "", fmt.Errorf("error armor pgp keys: %v", err)
 	}
 
-	var wc io.WriteCloser = nil
 	if passphrase != nil {
-		wc, _ = openpgp.SymmetricallyEncrypt(w, *passphrase, &openpgp.FileHints{}, nil)
-		_, err = wc.Write(buf.Bytes())
-		e.SerializePrivate(wc, nil)
+		encryptedKeyBuf := new(bytes.Buffer)
+		encryptConfig := &packet.Config{
+			DefaultCipher:          packet.CipherAES256,
+			DefaultCompressionAlgo: packet.CompressionNone,
+		}
+
+		encryptedKey, _ := openpgp.SymmetricallyEncrypt(encryptedKeyBuf, *passphrase, nil, encryptConfig)
+		e.SerializePrivate(encryptedKey, nil)
+		encryptedKey.Close()
+
+		w.Write(encryptedKeyBuf.Bytes())
 	} else {
 		e.SerializePrivate(w, nil)
 	}
 
-	e.SerializePrivate(b64w, nil)
-
-	if err != nil {
-		return "", "", fmt.Errorf("hmm: %v", err)
-	}
-
-	if wc != nil {
-		wc.Close()
-	}
 	w.Close()
+
+	e.SerializePrivate(b64w, nil)
 	b64w.Flush()
 
 	return base64.StdEncoding.EncodeToString(b64buf.Bytes()), buf.String(), nil
