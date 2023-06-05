@@ -12,8 +12,6 @@ import (
 	"golang.org/x/crypto/openpgp/armor"
 	"golang.org/x/crypto/openpgp/packet"
 
-	_ "golang.org/x/crypto/ripemd160"
-
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 

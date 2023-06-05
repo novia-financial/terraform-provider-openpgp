@@ -35,11 +35,11 @@ func dataSourceDecrypt() *schema.Resource {
 			"ciphertext_encoding": {
 				Type:     schema.TypeString,
 				Optional: true,
-				Default:  "armored",
+				Default:  EncodingType_Armored,
 				ValidateFunc: func(val interface{}, key string) (_ []string, errs []error) {
 					v := val.(string)
 
-					if v != "armored" && v != "base64" {
+					if v != EncodingType_Armored && v != EncodingType_Base64 {
 						errs = append(errs, fmt.Errorf("%q must be either 'armored' or 'base64', got: %s", key, v))
 					}
 
@@ -62,7 +62,7 @@ func dataSourceDecryptRead(d *schema.ResourceData, meta interface{}) error {
 	ciphertext := []byte(d.Get("ciphertext").(string))
 	passphrase := []byte(d.Get("passphrase").(string))
 
-	if encoding == "base64" {
+	if encoding == EncodingType_Base64 {
 		c, err := base64.StdEncoding.DecodeString(string(ciphertext))
 		if err != nil {
 			return fmt.Errorf("unable to decode: %v", err)
@@ -112,7 +112,7 @@ func decrypt(entity *openpgp.Entity, encrypted []byte, encoding string, passphra
 		return passphrase, nil
 	}
 
-	if encoding == "armored" {
+	if encoding == EncodingType_Armored {
 		// Decode message
 		block, err := armor.Decode(bytes.NewReader(encrypted))
 		if err != nil {
@@ -138,7 +138,7 @@ func decrypt(entity *openpgp.Entity, encrypted []byte, encoding string, passphra
 		return []byte{}, fmt.Errorf("error reading unverified body: %v", err)
 	}
 
-	if encoding == "armored" {
+	if encoding == EncodingType_Armored {
 		// Uncompress message
 		reader := bytes.NewReader(read)
 		uncompressed, err := gzip.NewReader(reader)

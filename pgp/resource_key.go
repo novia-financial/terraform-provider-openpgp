@@ -8,45 +8,72 @@ import (
 
 	"golang.org/x/crypto/openpgp"
 	"golang.org/x/crypto/openpgp/armor"
-	"golang.org/x/crypto/openpgp/packet"
 
+	"github.com/ProtonMail/gopenpgp/v2/crypto"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
-func createEntity(d *schema.ResourceData) (*openpgp.Entity, *[]byte, error) {
+func resourceKeyCreateFunc(d *schema.ResourceData, _ interface{}) error {
+	_, err := resourceKeyCreate(d)
+	return err
+}
+
+func resourceKeyCreate(d *schema.ResourceData) (*crypto.Key, error) {
+	key, err := createKey(d)
+	if err != nil {
+		return nil, err
+	}
+
+	base64PubKey, armoredPubKey, err := createPublicKey(key)
+	if err != nil {
+		return nil, err
+	}
+
+	passphrase := []byte(d.Get("passphrase").(string))
+	key, base64PrivateKey, armoredPrivateKey, err := createPrivateKey(key, passphrase)
+	if err != nil {
+		return nil, err
+	}
+
+	d.SetId(fmt.Sprintf("%x", key.GetEntity().PrimaryKey.Fingerprint))
+
+	d.Set("public_key", armoredPubKey)
+	d.Set("public_key_base64", base64PubKey)
+	d.Set("private_key", armoredPrivateKey)
+	d.Set("private_key_base64", base64PrivateKey)
+
+	return key, nil
+}
+
+func createKey(d *schema.ResourceData) (*crypto.Key, error) {
 	name := d.Get("name").(string)
 	comment := d.Get("comment").(string)
 	email := d.Get("email").(string)
 	expiryInDays := d.Get("expiry").(int)
-	passphrase := d.Get("passphrase").(string)
 
-	e, err := openpgp.NewEntity(name, comment, email, nil)
+	// does this support comments?
+	key, err := crypto.GenerateKey(name, email, KeyType_Rsa, KeyType_RsaBits)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error generating pgp: %v", err)
+		return nil, fmt.Errorf("error generating pgp: %v", err)
 	}
 
-	for _, id := range e.Identities {
+	for _, id := range key.GetEntity().Identities {
 		if expiryInDays > 0 {
 			var expiryInSeconds uint32 = uint32(expiryInDays * 24 * 60 * 60)
 			id.SelfSignature.KeyLifetimeSecs = &expiryInSeconds
 		}
 
-		err := id.SelfSignature.SignUserId(id.UserId.Id, e.PrimaryKey, e.PrivateKey, nil)
+		id.UserId.Comment = comment
+		err := id.SelfSignature.SignUserId(id.UserId.Id, key.GetEntity().PrimaryKey, key.GetEntity().PrivateKey, nil)
 		if err != nil {
-			return nil, nil, fmt.Errorf("error signing pgp keys: %v", err)
+			return nil, fmt.Errorf("error signing pgp keys: %v", err)
 		}
 	}
 
-	// ?
-	if passphrase == "" {
-		return e, nil, nil
-	}
-
-	passphraseBytes := []byte(passphrase)
-	return e, &passphraseBytes, nil
+	return key, nil
 }
 
-func createPublicKey(e *openpgp.Entity) (string, string, error) {
+func createPublicKey(key *crypto.Key) (string, string, error) {
 	b64buf := new(bytes.Buffer)
 	b64w := bufio.NewWriter(b64buf)
 
@@ -56,8 +83,8 @@ func createPublicKey(e *openpgp.Entity) (string, string, error) {
 		return "", "", fmt.Errorf("error armor pgp keys: %v", err)
 	}
 
-	e.Serialize(w)
-	e.Serialize(b64w)
+	key.GetEntity().Serialize(w)
+	key.GetEntity().Serialize(b64w)
 
 	w.Close()
 	b64w.Flush()
@@ -66,67 +93,34 @@ func createPublicKey(e *openpgp.Entity) (string, string, error) {
 }
 
 // returns a base64-private and an armored-private
-func createPrivateKey(e *openpgp.Entity, passphrase *[]byte) (string, string, error) {
+func createPrivateKey(key *crypto.Key, passphrase []byte) (*crypto.Key, string, string, error) {
 	b64buf := new(bytes.Buffer)
 	b64w := bufio.NewWriter(b64buf)
 
 	buf := new(bytes.Buffer)
 	w, err := armor.Encode(buf, openpgp.PrivateKeyType, nil)
 	if err != nil {
-		return "", "", fmt.Errorf("error armor pgp keys: %v", err)
+		return nil, "", "", fmt.Errorf("error armor pgp keys: %v", err)
 	}
 
-	if passphrase != nil {
-		encryptedKeyBuf := new(bytes.Buffer)
-		encryptConfig := &packet.Config{
-			DefaultCipher:          packet.CipherAES256,
-			DefaultCompressionAlgo: packet.CompressionNone,
-		}
-
-		encryptedKey, _ := openpgp.SymmetricallyEncrypt(encryptedKeyBuf, *passphrase, nil, encryptConfig)
-		e.SerializePrivate(encryptedKey, nil)
-		encryptedKey.Close()
-
-		w.Write(encryptedKeyBuf.Bytes())
-	} else {
-		e.SerializePrivate(w, nil)
-	}
+	key.GetEntity().SerializePrivate(w, nil)
+	key.GetEntity().SerializePrivate(b64w, nil)
 
 	w.Close()
-
-	e.SerializePrivate(b64w, nil)
 	b64w.Flush()
 
-	return base64.StdEncoding.EncodeToString(b64buf.Bytes()), buf.String(), nil
-}
+	if len(passphrase) > 0 {
+		key, _ = key.Lock(passphrase)
+		output, _ := key.Armor()
 
-func resourceKeyCreateFunc(d *schema.ResourceData, _ interface{}) error {
-	_, err := resourceKeyCreate(d)
-	return err
-}
+		// kleo doesnt like \n?
+		// file, _ := os.Create("maybe.asc")
+		// file.WriteString(output)
+		// file.Sync()
 
-func resourceKeyCreate(d *schema.ResourceData) (*openpgp.Entity, error) {
-	e, passphraseBytes, err := createEntity(d)
-	if err != nil {
-		return nil, err
+		// are we only locking the plaintext?
+		return key, base64.StdEncoding.EncodeToString(b64buf.Bytes()), output, nil
 	}
 
-	base64PubKey, armoredPubKey, err := createPublicKey(e)
-	if err != nil {
-		return nil, err
-	}
-
-	base64PrivateKey, armoredPrivateKey, err := createPrivateKey(e, passphraseBytes)
-	if err != nil {
-		return nil, err
-	}
-
-	d.SetId(fmt.Sprintf("%x", e.PrimaryKey.Fingerprint))
-
-	d.Set("public_key", armoredPubKey)
-	d.Set("public_key_base64", base64PubKey)
-	d.Set("private_key", armoredPrivateKey)
-	d.Set("private_key_base64", base64PrivateKey)
-
-	return e, nil
+	return key, base64.StdEncoding.EncodeToString(b64buf.Bytes()), buf.String(), nil
 }
