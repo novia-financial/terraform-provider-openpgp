@@ -1,7 +1,6 @@
 package pgp
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/base64"
 	"fmt"
@@ -57,6 +56,7 @@ func createKey(d *schema.ResourceData) (*crypto.Key, error) {
 		return nil, fmt.Errorf("error generating pgp: %v", err)
 	}
 
+	// should only be one here
 	for _, id := range key.GetEntity().Identities {
 		if expiryInDays > 0 {
 			var expiryInSeconds uint32 = uint32(expiryInDays * 24 * 60 * 60)
@@ -74,9 +74,6 @@ func createKey(d *schema.ResourceData) (*crypto.Key, error) {
 }
 
 func createPublicKey(key *crypto.Key) (string, string, error) {
-	b64buf := new(bytes.Buffer)
-	b64w := bufio.NewWriter(b64buf)
-
 	buf := new(bytes.Buffer)
 	w, err := armor.Encode(buf, openpgp.PublicKeyType, nil)
 	if err != nil {
@@ -84,19 +81,13 @@ func createPublicKey(key *crypto.Key) (string, string, error) {
 	}
 
 	key.GetEntity().Serialize(w)
-	key.GetEntity().Serialize(b64w)
-
 	w.Close()
-	b64w.Flush()
 
-	return base64.StdEncoding.EncodeToString(b64buf.Bytes()), buf.String(), nil
+	return base64.StdEncoding.EncodeToString(buf.Bytes()), buf.String(), nil
 }
 
 // returns a base64-private and an armored-private
 func createPrivateKey(key *crypto.Key, passphrase []byte) (*crypto.Key, string, string, error) {
-	b64buf := new(bytes.Buffer)
-	b64w := bufio.NewWriter(b64buf)
-
 	buf := new(bytes.Buffer)
 	w, err := armor.Encode(buf, openpgp.PrivateKeyType, nil)
 	if err != nil {
@@ -104,23 +95,21 @@ func createPrivateKey(key *crypto.Key, passphrase []byte) (*crypto.Key, string, 
 	}
 
 	key.GetEntity().SerializePrivate(w, nil)
-	key.GetEntity().SerializePrivate(b64w, nil)
-
 	w.Close()
-	b64w.Flush()
 
 	if len(passphrase) > 0 {
-		key, _ = key.Lock(passphrase)
-		output, _ := key.Armor()
+		key, err = key.Lock(passphrase)
+		if err != nil {
+			return nil, "", "", fmt.Errorf("error locking key: %v", err)
+		}
 
-		// kleo doesnt like \n?
-		// file, _ := os.Create("maybe.asc")
-		// file.WriteString(output)
-		// file.Sync()
+		output, err := key.Armor()
+		if err != nil {
+			return nil, "", "", fmt.Errorf("error getting armored of locked key: %v", err)
+		}
 
-		// are we only locking the plaintext?
-		return key, base64.StdEncoding.EncodeToString(b64buf.Bytes()), output, nil
+		return key, base64.StdEncoding.EncodeToString([]byte(output)), output, nil
 	}
 
-	return key, base64.StdEncoding.EncodeToString(b64buf.Bytes()), buf.String(), nil
+	return key, base64.StdEncoding.EncodeToString(buf.Bytes()), buf.String(), nil
 }
