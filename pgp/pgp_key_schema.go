@@ -34,6 +34,13 @@ func getSchemaResource() *schema.Resource {
 				Default:      0,
 				ValidateFunc: validation.IntBetween(ExpiryInDaysMinimum, ExpiryInDaysMaximum),
 			},
+			"passphrase": {
+				Type:         schema.TypeString,
+				ForceNew:     true,
+				Optional:     true,
+				Default:      "",
+				ValidateFunc: validation.StringLenBetween(PassphraseLengthMinimum, PassphraseLengthMaximum),
+			},
 
 			"public_key": {
 				Type:        schema.TypeString,
@@ -57,7 +64,7 @@ func getSchemaResource() *schema.Resource {
 			},
 		},
 		Importer: &schema.ResourceImporter{
-			State: schema.ImportStatePassthrough,
+			StateContext: schema.ImportStatePassthroughContext,
 		},
 	}
 }

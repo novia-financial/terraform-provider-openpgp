@@ -19,7 +19,6 @@ import (
 func dataSourceDecrypt() *schema.Resource {
 	return &schema.Resource{
 		Read: dataSourceDecryptRead,
-
 		Schema: map[string]*schema.Schema{
 			"plaintext": {
 				Type:     schema.TypeString,
@@ -36,11 +35,11 @@ func dataSourceDecrypt() *schema.Resource {
 			"ciphertext_encoding": {
 				Type:     schema.TypeString,
 				Optional: true,
-				Default:  "armored",
-				ValidateFunc: func(val interface{}, key string) (warns []string, errs []error) {
+				Default:  EncodingType_Armored,
+				ValidateFunc: func(val interface{}, key string) (_ []string, errs []error) {
 					v := val.(string)
 
-					if v != "armored" && v != "base64" {
+					if v != EncodingType_Armored && v != EncodingType_Base64 {
 						errs = append(errs, fmt.Errorf("%q must be either 'armored' or 'base64', got: %s", key, v))
 					}
 
@@ -62,7 +61,7 @@ func dataSourceDecryptRead(d *schema.ResourceData, meta interface{}) error {
 	encoding := d.Get("ciphertext_encoding").(string)
 	ciphertext := []byte(d.Get("ciphertext").(string))
 
-	if encoding == "base64" {
+	if encoding == EncodingType_Base64 {
 		c, err := base64.StdEncoding.DecodeString(string(ciphertext))
 		if err != nil {
 			return fmt.Errorf("unable to decode: %v", err)
@@ -94,7 +93,7 @@ func getPrivateKeyPacket(privateKey []byte) (*openpgp.Entity, error) {
 	}
 
 	if block.Type != openpgp.PrivateKeyType {
-		return nil, errors.New("Invalid private key data")
+		return nil, errors.New("invalid private key data")
 	}
 
 	packetReader := packet.NewReader(block.Body)
@@ -108,38 +107,38 @@ func decrypt(entity *openpgp.Entity, encrypted []byte, encoding string) ([]byte,
 	var messageReader *openpgp.MessageDetails
 	var err error
 
-	if encoding == "armored" {
+	if encoding == EncodingType_Armored {
 		// Decode message
 		block, err := armor.Decode(bytes.NewReader(encrypted))
 		if err != nil {
-			return []byte{}, fmt.Errorf("Error decoding: %v", err)
+			return []byte{}, fmt.Errorf("error decoding: %v", err)
 		}
 		if block.Type != "Message" {
-			return []byte{}, errors.New("Invalid message type")
+			return []byte{}, errors.New("invalid message type")
 		}
 
 		messageReader, err = openpgp.ReadMessage(block.Body, entityList, nil, nil)
 		if err != nil {
-			return []byte{}, fmt.Errorf("Error reading message: %v", err)
+			return []byte{}, fmt.Errorf("error reading message: %v", err)
 		}
 	} else {
 		messageReader, err = openpgp.ReadMessage(bytes.NewReader(encrypted), entityList, nil, nil)
 		if err != nil {
-			return []byte{}, fmt.Errorf("Error reading message: %v", err)
+			return []byte{}, fmt.Errorf("error reading message: %v", err)
 		}
 	}
 
 	read, err := ioutil.ReadAll(messageReader.UnverifiedBody)
 	if err != nil {
-		return []byte{}, fmt.Errorf("Error reading unverified body: %v", err)
+		return []byte{}, fmt.Errorf("error reading unverified body: %v", err)
 	}
 
-	if encoding == "armored" {
+	if encoding == EncodingType_Armored {
 		// Uncompress message
 		reader := bytes.NewReader(read)
 		uncompressed, err := gzip.NewReader(reader)
 		if err != nil {
-			return []byte{}, fmt.Errorf("Error initializing gzip reader: %v", err)
+			return []byte{}, fmt.Errorf("error initializing gzip reader: %v", err)
 		}
 		defer uncompressed.Close()
 
