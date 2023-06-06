@@ -11,7 +11,7 @@ import (
 	"golang.org/x/crypto/openpgp"
 )
 
-func TestCreateEntity_CreateEntityWithNoExpiry_KeyExpiredReturnsFalse(t *testing.T) {
+func TestCreateKey_CreateEntityWithNoExpiry_KeyExpiredReturnsFalse(t *testing.T) {
 	t.Parallel()
 
 	const NAME string = "nameeee"
@@ -32,7 +32,7 @@ func TestCreateEntity_CreateEntityWithNoExpiry_KeyExpiredReturnsFalse(t *testing
 	assert.Equal(t, isExpired, false)
 }
 
-func TestCreateEntity_CreateExpiredEntity_KeyExpiredReturnsTrue(t *testing.T) {
+func TestCreateKey_CreateExpiredEntity_KeyExpiredReturnsTrue(t *testing.T) {
 	t.Parallel()
 
 	const NAME string = "nameeee"
@@ -56,8 +56,9 @@ func TestCreateEntity_CreateExpiredEntity_KeyExpiredReturnsTrue(t *testing.T) {
 	assert.Equal(t, isExpired, true)
 }
 
-func TestCreateEntity_CreateValidEntity_KeyExpiredReturnsFalse(t *testing.T) {
+func TestCreateKey_CreateValidEntity_KeyExpiredReturnsFalse(t *testing.T) {
 	t.Parallel()
+
 	rand.Seed(time.Now().UnixNano()) // need to seed the PRNG before using rand
 
 	const NAME string = "nameeee"
