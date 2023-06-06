@@ -60,7 +60,6 @@ func dataSourceDecryptRead(d *schema.ResourceData, meta interface{}) error {
 
 	encoding := d.Get("ciphertext_encoding").(string)
 	ciphertext := []byte(d.Get("ciphertext").(string))
-	passphrase := []byte(d.Get("passphrase").(string))
 
 	if encoding == EncodingType_Base64 {
 		c, err := base64.StdEncoding.DecodeString(string(ciphertext))
@@ -70,7 +69,7 @@ func dataSourceDecryptRead(d *schema.ResourceData, meta interface{}) error {
 		ciphertext = c
 	}
 
-	plaintext, err := decrypt(privateKeyPacket, ciphertext, encoding, passphrase)
+	plaintext, err := decrypt(privateKeyPacket, ciphertext, encoding)
 	if err != nil {
 		return err
 	}
@@ -101,16 +100,12 @@ func getPrivateKeyPacket(privateKey []byte) (*openpgp.Entity, error) {
 	return openpgp.ReadEntity(packetReader)
 }
 
-func decrypt(entity *openpgp.Entity, encrypted []byte, encoding string, passphrase []byte) ([]byte, error) {
+func decrypt(entity *openpgp.Entity, encrypted []byte, encoding string) ([]byte, error) {
 	// Decrypt message
 	entityList := openpgp.EntityList{entity}
 
 	var messageReader *openpgp.MessageDetails
 	var err error
-
-	prompt := func(keys []openpgp.Key, symmetric bool) ([]byte, error) {
-		return passphrase, nil
-	}
 
 	if encoding == EncodingType_Armored {
 		// Decode message
@@ -122,12 +117,12 @@ func decrypt(entity *openpgp.Entity, encrypted []byte, encoding string, passphra
 			return []byte{}, errors.New("invalid message type")
 		}
 
-		messageReader, err = openpgp.ReadMessage(block.Body, entityList, prompt, nil)
+		messageReader, err = openpgp.ReadMessage(block.Body, entityList, nil, nil)
 		if err != nil {
 			return []byte{}, fmt.Errorf("error reading message: %v", err)
 		}
 	} else {
-		messageReader, err = openpgp.ReadMessage(bytes.NewReader(encrypted), entityList, prompt, nil)
+		messageReader, err = openpgp.ReadMessage(bytes.NewReader(encrypted), entityList, nil, nil)
 		if err != nil {
 			return []byte{}, fmt.Errorf("error reading message: %v", err)
 		}
