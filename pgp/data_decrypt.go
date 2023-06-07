@@ -22,9 +22,16 @@ func dataSourceDecryptRead(d *schema.ResourceData, meta interface{}) error {
 		ciphertext = string(c)
 	}
 
-	// passphrase is optional, so we need a non-passphrase decrypt
+	var plaintext string
+	var err error
 	passphrase := d.Get("passphrase").(string)
-	plaintext, err := helper.DecryptMessageArmored(rawPrivateKey, []byte(passphrase), ciphertext)
+	if passphrase == "" {
+		// passphrase is optional, so we need a non-passphrase decrypt
+		plaintext, err = helper.DecryptMessageArmored(rawPrivateKey, nil, ciphertext)
+	} else {
+		plaintext, err = helper.DecryptMessageArmored(rawPrivateKey, []byte(passphrase), ciphertext)
+	}
+
 	if err != nil {
 		return err
 	}
