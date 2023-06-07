@@ -22,7 +22,7 @@ func TestCreateKey_CreateEntityWithNoExpiry_KeyExpiredReturnsFalse(t *testing.T)
 		"comment": COMMENT,
 		"email":   EMAIL,
 	}
-	var resourceData *schema.ResourceData = schema.TestResourceDataRaw(t, getSchemaResource().Schema, values)
+	var resourceData *schema.ResourceData = schema.TestResourceDataRaw(t, GetPgpKeySchema().Schema, values)
 
 	key, err := createKey(resourceData)
 	assert.NotEqual(t, key.GetEntity(), (*openpgp.Entity)(nil))
@@ -45,7 +45,7 @@ func TestCreateKey_CreateExpiredEntity_KeyExpiredReturnsTrue(t *testing.T) {
 		"email":   EMAIL,
 		"expiry":  EXPIRY,
 	}
-	var resourceData *schema.ResourceData = schema.TestResourceDataRaw(t, getSchemaResource().Schema, values)
+	var resourceData *schema.ResourceData = schema.TestResourceDataRaw(t, GetPgpKeySchema().Schema, values)
 
 	key, err := createKey(resourceData)
 	assert.NotEqual(t, key.GetEntity(), (*openpgp.Entity)(nil))
@@ -71,7 +71,7 @@ func TestCreateKey_CreateValidEntity_KeyExpiredReturnsFalse(t *testing.T) {
 		"email":   EMAIL,
 		"expiry":  expiry,
 	}
-	var resourceData *schema.ResourceData = schema.TestResourceDataRaw(t, getSchemaResource().Schema, values)
+	var resourceData *schema.ResourceData = schema.TestResourceDataRaw(t, GetPgpKeySchema().Schema, values)
 
 	key, err := createKey(resourceData)
 	assert.NotEqual(t, key.GetEntity(), (*openpgp.Entity)(nil))
@@ -96,7 +96,7 @@ func TestCreatePrivateKey_WithPassphraseAndExpiry_PrivateKeyIsEncrypted(t *testi
 		"expiry":     EXPIRY,
 		"passphrase": passphrase,
 	}
-	var resourceData *schema.ResourceData = schema.TestResourceDataRaw(t, getSchemaResource().Schema, values)
+	var resourceData *schema.ResourceData = schema.TestResourceDataRaw(t, GetPgpKeySchema().Schema, values)
 
 	key, _ := createKey(resourceData)
 	p := []byte(passphrase)
@@ -119,7 +119,7 @@ func TestCreatePrivateKey_WithPassphraseAndNoExpiry_PrivateKeyIsEncrypted(t *tes
 		"email":      EMAIL,
 		"passphrase": passphrase,
 	}
-	var resourceData *schema.ResourceData = schema.TestResourceDataRaw(t, getSchemaResource().Schema, values)
+	var resourceData *schema.ResourceData = schema.TestResourceDataRaw(t, GetPgpKeySchema().Schema, values)
 
 	key, _ := createKey(resourceData)
 	p := []byte(passphrase)
@@ -140,7 +140,7 @@ func TestCreatePrivateKey_WithNoPassphraseAndNoExpiry_PrivateKeyIsNotEncrypted(t
 		"comment": COMMENT,
 		"email":   EMAIL,
 	}
-	var resourceData *schema.ResourceData = schema.TestResourceDataRaw(t, getSchemaResource().Schema, values)
+	var resourceData *schema.ResourceData = schema.TestResourceDataRaw(t, GetPgpKeySchema().Schema, values)
 
 	key, _ := createKey(resourceData)
 	key, _, _, err := createPrivateKey(key, []byte{})
@@ -162,7 +162,7 @@ func TestCreatePrivateKey_WithNoPassphraseAndExpiry_PrivateKeyIsNotEncrypted(t *
 		"email":   EMAIL,
 		"expiry":  EXPIRY,
 	}
-	var resourceData *schema.ResourceData = schema.TestResourceDataRaw(t, getSchemaResource().Schema, values)
+	var resourceData *schema.ResourceData = schema.TestResourceDataRaw(t, GetPgpKeySchema().Schema, values)
 
 	key, _ := createKey(resourceData)
 	key, _, _, err := createPrivateKey(key, []byte{})
@@ -184,7 +184,7 @@ func TestCreatePrivateKey_WithPassphrase_CanBeDecryptedWithCorrectPassphrase(t *
 		"email":      EMAIL,
 		"passphrase": PASSPHRASE,
 	}
-	var resourceData *schema.ResourceData = schema.TestResourceDataRaw(t, getSchemaResource().Schema, values)
+	var resourceData *schema.ResourceData = schema.TestResourceDataRaw(t, GetPgpKeySchema().Schema, values)
 
 	key, _ := createKey(resourceData)
 	key, _, _, err := createPrivateKey(key, []byte(PASSPHRASE))
@@ -210,7 +210,7 @@ func TestCreatePrivateKey_WithPassphrase_DecryptingWithIncorrectPassphraseFails(
 		"email":      EMAIL,
 		"passphrase": PASSPHRASE,
 	}
-	var resourceData *schema.ResourceData = schema.TestResourceDataRaw(t, getSchemaResource().Schema, values)
+	var resourceData *schema.ResourceData = schema.TestResourceDataRaw(t, GetPgpKeySchema().Schema, values)
 
 	key, _ := createKey(resourceData)
 	key, _, _, err := createPrivateKey(key, []byte(PASSPHRASE))

@@ -5,9 +5,13 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 )
 
-func getSchemaResource() *schema.Resource {
+func GetPgpKeyName() string {
+	return "pgp_key"
+}
+
+func GetPgpKeySchema() *schema.Resource {
 	return &schema.Resource{
-		Create: resourceKeyCreateFunc,
+		Create: ResourceKeyCreateFunc,
 		Read:   schema.Noop,
 		Delete: schema.RemoveFromState,
 		Schema: map[string]*schema.Schema{
