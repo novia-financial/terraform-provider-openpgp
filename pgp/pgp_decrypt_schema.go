@@ -40,7 +40,6 @@ func GetPgpDecryptSchema() *schema.Resource {
 				Default:  EncodingType_Armored,
 				ValidateFunc: func(val interface{}, key string) (_ []string, errs []error) {
 					v := val.(string)
-
 					if v != EncodingType_Armored && v != EncodingType_Base64 {
 						errs = append(errs, fmt.Errorf("%q must be either 'armored' or 'base64', got: %s", key, v))
 					}
