@@ -12,7 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
-func resourceKeyCreateFunc(d *schema.ResourceData, _ interface{}) error {
+func ResourceKeyCreateFunc(d *schema.ResourceData, _ interface{}) error {
 	_, err := resourceKeyCreate(d)
 	return err
 }
@@ -50,7 +50,6 @@ func createKey(d *schema.ResourceData) (*crypto.Key, error) {
 	email := d.Get("email").(string)
 	expiryInDays := d.Get("expiry").(int)
 
-	// does this support comments?
 	key, err := crypto.GenerateKey(name, email, KeyType_Rsa, KeyType_RsaBits)
 	if err != nil {
 		return nil, fmt.Errorf("error generating pgp: %v", err)
